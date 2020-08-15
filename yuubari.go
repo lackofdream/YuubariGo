@@ -4,13 +4,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/elazarl/goproxy.v1"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/elazarl/goproxy.v1"
 )
 
 func copyRequest(req *http.Request) *http.Request {
@@ -59,7 +61,7 @@ type ProxyHandler struct {
 	retryInterval    int
 }
 
-func NewYuubariGoProxyHandler(port int, maxRetry int, retryInterval int) *ProxyHandler {
+func NewYuubariGoProxyHandler(port int, maxRetry int, retryInterval int, proxy string) *ProxyHandler {
 	ret := ProxyHandler{
 		ProxyHttpServer: goproxy.NewProxyHttpServer(),
 		port:            port,
@@ -73,9 +75,20 @@ func NewYuubariGoProxyHandler(port int, maxRetry int, retryInterval int) *ProxyH
 		retryInterval:    retryInterval,
 	}
 	ret.OnRequest().DoFunc(ret.ProxyWithRetry)
+	if len(proxy) != 0 {
+		ret.SetProxy(proxy)
+	}
 	return &ret
 }
 
 func (p *ProxyHandler) Serve() error {
 	return http.ListenAndServe(fmt.Sprintf(":%d", p.port), p)
+}
+
+func (p *ProxyHandler) SetProxy(proxy string) {
+	proxyUrl, err := url.Parse(proxy)
+	if err != nil {
+		log.Fatal(err)
+	}
+	p.client.Transport = &http.Transport{Proxy: http.ProxyURL(proxyUrl)}
 }
