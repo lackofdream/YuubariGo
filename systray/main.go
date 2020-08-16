@@ -21,23 +21,20 @@ func init() {
 }
 func main() {
 	iconData, _ := faviconIcoBytes()
-	proxy := yuubari_go.NewYuubariGoProxyHandler(port, maxRetry, retryInterval, proxy)
-	go proxy.Serve()
 	systray.Run(func() {
 		systray.SetIcon(iconData)
 		systray.SetTitle("YuubariGo!")
-		systray.SetTooltip(fmt.Sprintf("YuubariGo! (%d)", proxy.ErrCount))
+		systray.SetTooltip(fmt.Sprintf("YuubariGo! (%d)", 0))
 		mQuit := systray.AddMenuItem("Quit", "Quit")
 		go func() {
 			<-mQuit.ClickedCh
 			systray.Quit()
 		}()
-		go func() {
-			for {
-				<-proxy.ErrCountNotifyCh
-				systray.SetTooltip(fmt.Sprintf("YuubariGo! (%d)", proxy.ErrCount))
-			}
-		}()
+		proxy := yuubari_go.NewYuubariGoProxyHandler(port, maxRetry, retryInterval, proxy, func(errCnt int64) {
+			systray.SetTooltip(fmt.Sprintf("YuubariGo! (%d)", errCnt))
+		})
+		proxy.SetLogPath("YuubariGo.log")
+		go proxy.Serve()
 	}, func() {
 	})
 }

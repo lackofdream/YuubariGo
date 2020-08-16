@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -30,15 +31,24 @@ func copyRequest(req *http.Request) *http.Request {
 	return ret
 }
 
+type ProxyHandler struct {
+	*goproxy.ProxyHttpServer
+	port             int
+	client           http.Client
+	errCount         int64
+	errCountNotifyCh chan struct{}
+	maxRetry         int
+	retryInterval    int
+}
+
 func (p *ProxyHandler) ProxyWithRetry(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 	retryCount := 1
 	req.RequestURI = ""
 	reqCopy := copyRequest(req)
 	resp, err := p.client.Do(req)
 	for err != nil {
-		atomic.AddInt64(&p.ErrCount, 1)
-		p.ErrCountNotifyCh <- struct{}{}
-		log.Infof("error count: %d", atomic.LoadInt64(&p.ErrCount))
+		atomic.AddInt64(&p.errCount, 1)
+		p.errCountNotifyCh <- struct{}{}
 		if !strings.Contains(err.Error(), "EOF") || retryCount >= p.maxRetry {
 			log.Error("reached max retries, abort")
 			log.Error(err)
@@ -51,17 +61,7 @@ func (p *ProxyHandler) ProxyWithRetry(req *http.Request, _ *goproxy.ProxyCtx) (*
 	return req, resp
 }
 
-type ProxyHandler struct {
-	*goproxy.ProxyHttpServer
-	port             int
-	client           http.Client
-	ErrCount         int64
-	ErrCountNotifyCh chan struct{}
-	maxRetry         int
-	retryInterval    int
-}
-
-func NewYuubariGoProxyHandler(port int, maxRetry int, retryInterval int, proxy string) *ProxyHandler {
+func NewYuubariGoProxyHandler(port int, maxRetry int, retryInterval int, proxy string, onErrorCntIncr func(int64)) *ProxyHandler {
 	ret := ProxyHandler{
 		ProxyHttpServer: goproxy.NewProxyHttpServer(),
 		port:            port,
@@ -70,11 +70,17 @@ func NewYuubariGoProxyHandler(port int, maxRetry int, retryInterval int, proxy s
 				return http.ErrUseLastResponse
 			},
 		},
-		ErrCountNotifyCh: make(chan struct{}, 1),
+		errCountNotifyCh: make(chan struct{}, 1024),
 		maxRetry:         maxRetry,
 		retryInterval:    retryInterval,
 	}
 	ret.OnRequest().DoFunc(ret.ProxyWithRetry)
+	go func() {
+		for {
+			<-ret.errCountNotifyCh
+			onErrorCntIncr(ret.errCount)
+		}
+	}()
 	if len(proxy) != 0 {
 		ret.SetProxy(proxy)
 	}
@@ -91,4 +97,12 @@ func (p *ProxyHandler) SetProxy(proxy string) {
 		log.Fatal(err)
 	}
 	p.client.Transport = &http.Transport{Proxy: http.ProxyURL(proxyUrl)}
+}
+
+func (p *ProxyHandler) SetLogPath(path string) {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0755)
+	if err != nil {
+		panic(err)
+	}
+	log.SetOutput(f)
 }
