@@ -24,13 +24,14 @@ func main() {
 	systray.Run(func() {
 		systray.SetIcon(iconData)
 		systray.SetTitle("YuubariGo!")
-		systray.SetTooltip(fmt.Sprintf("YuubariGo! (%d)", 0))
+		systray.SetTooltip("YuubariGo!")
 		mQuit := systray.AddMenuItem("Quit", "Quit")
 		go func() {
 			<-mQuit.ClickedCh
 			systray.Quit()
 		}()
 		proxy := yuubari_go.NewYuubariGoProxyHandler(port, maxRetry, retryInterval, proxy, func(errCnt int64) {
+			systray.SetTitle(fmt.Sprintf("YuubariGo! (%d)", errCnt))
 			systray.SetTooltip(fmt.Sprintf("YuubariGo! (%d)", errCnt))
 		})
 		proxy.SetLogPath("YuubariGo.log")

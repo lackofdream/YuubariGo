@@ -2,7 +2,7 @@
 
 Yet anther KanColle Proxy tool.
 
-No cache, no sniffing, just retrying upon network error. 
+No cache, no sniffing, no acceleration, just retrying upon unexcepted EOF network error. 
 
 **Use at your own risk.**
 
@@ -22,9 +22,23 @@ go build yuubari_go/cli
 go build -o YuubariGo.exe -ldflags "-H=windowsgui" yuubari_go/systray
 ```
 
-### Linux/Mac OS
+### Linux
 
-not tested, contribution is welcome
+build dependencies: 
+- gtk3
+- libappindicator3
+
+have those dependencies ready, then
+
+```bash
+go build -o YuubariGo yuubari_go/systray
+```
+
+### Mac OS
+
+![swole](https://files.catbox.moe/7he6r1.png)
+
+not tested due to having no mac device, contributions are welcome
 
 # Usage
 
@@ -40,3 +54,8 @@ not tested, contribution is welcome
   -retry int
         max retry times (default 3)
 ```
+
+# Credits
+
+- github.com/getlantern/systray
+- github.com/elazarl/goproxy
