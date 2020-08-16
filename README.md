@@ -35,6 +35,8 @@ not tested, contribution is welcome
         retry interval (seconds) (default 5)
   -port int
         listen port (default 8099)
+  -proxy string
+        backend proxy url
   -retry int
         max retry times (default 3)
 ```
