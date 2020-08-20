@@ -49,7 +49,9 @@ func (p *ProxyHandler) ProxyWithRetry(req *http.Request, _ *goproxy.ProxyCtx) (*
 	for err != nil {
 		atomic.AddInt64(&p.errCount, 1)
 		p.errCountNotifyCh <- struct{}{}
-		if !strings.Contains(err.Error(), "EOF") || retryCount >= p.maxRetry {
+		if (!strings.Contains(err.Error(), "EOF") &&
+			!strings.Contains(err.Error(), "An existing connection was forcibly closed by the remote host")) ||
+			retryCount >= p.maxRetry {
 			log.Error("reached max retries, abort")
 			log.Error(err)
 			return req, goproxy.NewResponse(req, "application/json", 500, "")
