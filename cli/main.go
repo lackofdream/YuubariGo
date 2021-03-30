@@ -22,7 +22,9 @@ func init() {
 }
 
 func main() {
-	log.Infoln("色々試してみても、いいかしら？")
+	if debug {
+		log.SetLevel(log.DebugLevel)
+	}
 	proxy := yuubari_go.NewYuubariGoProxyHandler(port, maxRetry, retryInterval, proxy, func(errCnt int64) {
 		log.Warnf("error count: %d", errCnt)
 	})

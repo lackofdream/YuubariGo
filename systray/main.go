@@ -4,22 +4,28 @@ import (
 	"flag"
 	"fmt"
 	"github.com/getlantern/systray"
+	log "github.com/sirupsen/logrus"
 	"yuubari_go"
 )
 
 var maxRetry int
 var retryInterval int
 var port int
+var debug bool
 var proxy string
 
 func init() {
 	flag.IntVar(&port, "port", 8099, "listen port")
 	flag.IntVar(&maxRetry, "retry", 3, "max retry times")
 	flag.IntVar(&retryInterval, "interval", 5, "retry interval (seconds)")
+	flag.BoolVar(&debug, "debug", false, "enable debug log")
 	flag.StringVar(&proxy, "proxy", "", "backend proxy url")
 	flag.Parse()
 }
 func main() {
+	if debug {
+		log.SetLevel(log.DebugLevel)
+	}
 	iconData, _ := faviconIcoBytes()
 	systray.Run(func() {
 		systray.SetIcon(iconData)
@@ -35,6 +41,7 @@ func main() {
 			systray.SetTooltip(fmt.Sprintf("YuubariGo! (%d)", errCnt))
 		})
 		proxy.SetLogPath("YuubariGo.log")
+		proxy.Verbose = debug
 		go proxy.Serve()
 	}, func() {
 	})
