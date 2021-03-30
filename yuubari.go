@@ -2,12 +2,14 @@ package yuubari_go
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -16,18 +18,34 @@ import (
 	"gopkg.in/elazarl/goproxy.v1"
 )
 
-func copyRequest(req *http.Request) *http.Request {
-	body, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = req.Body.Close()
-	if err != nil {
-		log.Fatal(err)
-	}
+// removeProxyHeaders Copied from goproxy
+func removeProxyHeaders(r *http.Request) {
+	r.RequestURI = "" // this must be reset when serving a request with the client
+	// If no Accept-Encoding header exists, Transport will add the headers it can accept
+	// and would wrap the response body with the relevant reader.
+	r.Header.Del("Accept-Encoding")
+	// curl can add that, see
+	// https://jdebp.eu./FGA/web-proxy-connection-header.html
+	r.Header.Del("Proxy-Connection")
+	r.Header.Del("Proxy-Authenticate")
+	r.Header.Del("Proxy-Authorization")
+	// Connection, Authenticate and Authorization are single hop Header:
+	// http://www.w3.org/Protocols/rfc2616/rfc2616.txt
+	// 14.10 Connection
+	//   The Connection general-header field allows the sender to specify
+	//   options that are desired for that particular connection and MUST NOT
+	//   be communicated by proxies over further connections.
+	r.Header.Del("Connection")
+}
+
+// craftClientRequest craft client request from received server request
+func craftClientRequest(req *http.Request) *http.Request {
 	ret := req.Clone(context.Background())
-	ret.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-	req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+	body, _ := io.ReadAll(req.Body)
+	req.Body.Close()
+	ret.Body = io.NopCloser(bytes.NewBuffer(body))
+	req.Body = io.NopCloser(bytes.NewBuffer(body))
+	removeProxyHeaders(ret)
 	return ret
 }
 
@@ -41,16 +59,39 @@ type ProxyHandler struct {
 	retryInterval    int
 }
 
+// readResp get response body data while keeping response body readable
+func readResp(response *http.Response) []byte {
+	data, _ := io.ReadAll(response.Body)
+	response.Body.Close()
+	response.Body = io.NopCloser(bytes.NewBuffer(data))
+	return data
+}
+
+// gzipIfClientAccept return gzip encoded data if client accept
+func gzipIfClientAccept(r *http.Request, response *http.Response) (*http.Request, *http.Response) {
+	if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		return r, response
+	}
+	data, _ := io.ReadAll(response.Body)
+	response.Body.Close()
+	buffer := bytes.NewBuffer(make([]byte, 0))
+	w := gzip.NewWriter(buffer)
+	defer w.Close()
+	w.Write(data)
+	response.Header.Set("Content-Encoding", "gzip")
+	response.Header.Set("Content-Length", strconv.Itoa(buffer.Len()))
+	response.Body = io.NopCloser(buffer)
+	return r, response
+}
+
 func (p *ProxyHandler) ProxyWithRetry(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 	retryCount := 0
-	// this is required otherwise it'll be error: Request.RequestURI can't be set in client requests
-	req.RequestURI = ""
 
 	for retryCount <= p.maxRetry {
 		log.Debugf("proxy request to %s", req.URL)
-		resp, err := p.client.Do(copyRequest(req))
+		resp, err := p.client.Do(craftClientRequest(req))
 		if err == nil {
-			return req, resp
+			return gzipIfClientAccept(req, resp)
 		}
 		atomic.AddInt64(&p.errCount, 1)
 		p.errCountNotifyCh <- struct{}{}

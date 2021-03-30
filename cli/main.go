@@ -28,6 +28,5 @@ func main() {
 	proxy := yuubari_go.NewYuubariGoProxyHandler(port, maxRetry, retryInterval, proxy, func(errCnt int64) {
 		log.Warnf("error count: %d", errCnt)
 	})
-	proxy.Verbose = debug
 	log.Fatal(proxy.Serve())
 }

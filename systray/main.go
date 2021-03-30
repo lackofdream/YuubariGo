@@ -41,7 +41,6 @@ func main() {
 			systray.SetTooltip(fmt.Sprintf("YuubariGo! (%d)", errCnt))
 		})
 		proxy.SetLogPath("YuubariGo.log")
-		proxy.Verbose = debug
 		go proxy.Serve()
 	}, func() {
 	})
