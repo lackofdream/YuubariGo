@@ -14,4 +14,6 @@ ENV TZ Asia/Shanghai
 
 COPY --from=builder /go/bin/yuubari_go /go/bin/yuubari_go
 
-ENTRYPOINT ["/go/bin/yuubari_go", "-debug", "-interval", "2", "-retry", "10"]
+ENTRYPOINT ["/go/bin/yuubari_go"]
+
+CMD ["-debug", "-interval", "2", "-retry", "10"]

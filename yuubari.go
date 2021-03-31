@@ -87,6 +87,12 @@ func gzipIfClientAccept(r *http.Request, response *http.Response) (*http.Request
 func (p *ProxyHandler) ProxyWithRetry(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 	retryCount := 0
 
+	// check if MITMed connect request
+	if len(req.URL.Host) == 0 {
+		req.URL.Scheme = "http"
+		req.URL.Host = req.Host
+	}
+
 	for retryCount <= p.maxRetry {
 		log.Debugf("proxy request to %s", req.URL)
 		resp, err := p.client.Do(craftClientRequest(req))
@@ -122,6 +128,10 @@ func NewYuubariGoProxyHandler(port int, maxRetry int, retryInterval int, proxy s
 		retryInterval:    retryInterval,
 	}
 	ret.OnRequest().DoFunc(ret.ProxyWithRetry)
+	ret.OnRequest().HandleConnectFunc(func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
+		log.Debugf("connect received, host: %s", host)
+		return goproxy.HTTPMitmConnect, host
+	})
 	go func() {
 		for {
 			<-ret.errCountNotifyCh
