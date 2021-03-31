@@ -2,14 +2,12 @@ package yuubari_go
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -67,23 +65,6 @@ func readResp(response *http.Response) []byte {
 	return data
 }
 
-// gzipIfClientAccept return gzip encoded data if client accept
-func gzipIfClientAccept(r *http.Request, response *http.Response) (*http.Request, *http.Response) {
-	if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-		return r, response
-	}
-	data, _ := io.ReadAll(response.Body)
-	response.Body.Close()
-	buffer := bytes.NewBuffer(make([]byte, 0))
-	w := gzip.NewWriter(buffer)
-	w.Write(data)
-	w.Close()
-	response.Header.Set("Content-Encoding", "gzip")
-	response.Header.Set("Content-Length", strconv.Itoa(buffer.Len()))
-	response.Body = io.NopCloser(buffer)
-	return r, response
-}
-
 func (p *ProxyHandler) ProxyWithRetry(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 	retryCount := 0
 
@@ -93,11 +74,16 @@ func (p *ProxyHandler) ProxyWithRetry(req *http.Request, _ *goproxy.ProxyCtx) (*
 		req.URL.Host = req.Host
 	}
 
+	// if KCCacheProxy enabled and URL requested is static files, throw it to KCCacheProxy
+	if strings.Contains(req.URL.Path, "/kcs/") || strings.Contains(req.URL.Path, "/kcs2/") {
+		log.Debugf("TODO: throw this to KCP: %s", req.URL)
+	}
+
 	for retryCount <= p.maxRetry {
 		log.Debugf("proxy request to %s", req.URL)
 		resp, err := p.client.Do(craftClientRequest(req))
 		if err == nil {
-			return gzipIfClientAccept(req, resp)
+			return req, resp
 		}
 		atomic.AddInt64(&p.errCount, 1)
 		p.errCountNotifyCh <- struct{}{}
