@@ -51,6 +51,8 @@ type ProxyHandler struct {
 	*goproxy.ProxyHttpServer
 	port             int
 	client           http.Client
+	kcpEnabled       bool
+	kcsClient        http.Client
 	errCount         int64
 	errCountNotifyCh chan struct{}
 	maxRetry         int
@@ -74,14 +76,17 @@ func (p *ProxyHandler) ProxyWithRetry(req *http.Request, _ *goproxy.ProxyCtx) (*
 		req.URL.Host = req.Host
 	}
 
-	// if KCCacheProxy enabled and URL requested is static files, throw it to KCCacheProxy
-	if strings.Contains(req.URL.Path, "/kcs/") || strings.Contains(req.URL.Path, "/kcs2/") {
-		log.Debugf("TODO: throw this to KCP: %s", req.URL)
+	httpClient := &p.client
+
+	// if use kcsClient for static files
+	if p.kcpEnabled &&
+		(strings.Contains(req.URL.Path, "/kcs/") || strings.Contains(req.URL.Path, "/kcs2/")) {
+		httpClient = &p.kcsClient
 	}
 
 	for retryCount <= p.maxRetry {
 		log.Debugf("proxy request to %s", req.URL)
-		resp, err := p.client.Do(craftClientRequest(req))
+		resp, err := httpClient.Do(craftClientRequest(req))
 		if err == nil {
 			return req, resp
 		}
@@ -100,11 +105,16 @@ func (p *ProxyHandler) ProxyWithRetry(req *http.Request, _ *goproxy.ProxyCtx) (*
 	return req, goproxy.NewResponse(req, "application/json", 500, "")
 }
 
-func NewYuubariGoProxyHandler(port int, maxRetry int, retryInterval int, proxy string, onErrorCntIncr func(int64)) *ProxyHandler {
+func NewYuubariGoProxyHandler(port int, maxRetry int, retryInterval int, proxy string, kcp string, onErrorCntIncr func(int64)) *ProxyHandler {
 	ret := ProxyHandler{
 		ProxyHttpServer: goproxy.NewProxyHttpServer(),
 		port:            port,
 		client: http.Client{
+			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		kcsClient: http.Client{
 			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 				return http.ErrUseLastResponse
 			},
@@ -127,6 +137,9 @@ func NewYuubariGoProxyHandler(port int, maxRetry int, retryInterval int, proxy s
 	if len(proxy) != 0 {
 		ret.SetProxy(proxy)
 	}
+	if len(kcp) != 0 {
+		ret.SetKCP(kcp)
+	}
 	return &ret
 }
 
@@ -142,6 +155,15 @@ func (p *ProxyHandler) SetProxy(proxy string) {
 		log.Fatal(err)
 	}
 	p.client.Transport = &http.Transport{Proxy: http.ProxyURL(proxyUrl)}
+}
+
+func (p *ProxyHandler) SetKCP(kcp string) {
+	kcpUrl, err := url.Parse(kcp)
+	if err != nil {
+		log.Fatal(err)
+	}
+	p.kcsClient.Transport = &http.Transport{Proxy: http.ProxyURL(kcpUrl)}
+	p.kcpEnabled = true
 }
 
 func (p *ProxyHandler) SetLogPath(path string) {

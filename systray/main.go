@@ -13,6 +13,7 @@ var retryInterval int
 var port int
 var debug bool
 var proxy string
+var kcp string
 
 func init() {
 	flag.IntVar(&port, "port", 8099, "listen port")
@@ -20,6 +21,7 @@ func init() {
 	flag.IntVar(&retryInterval, "interval", 5, "retry interval (seconds)")
 	flag.BoolVar(&debug, "debug", false, "enable debug log")
 	flag.StringVar(&proxy, "proxy", "", "backend proxy url")
+	flag.StringVar(&kcp, "kcp", "", "KCCacheProxy url")
 	flag.Parse()
 }
 func main() {
@@ -36,7 +38,7 @@ func main() {
 			<-mQuit.ClickedCh
 			systray.Quit()
 		}()
-		proxy := yuubari_go.NewYuubariGoProxyHandler(port, maxRetry, retryInterval, proxy, func(errCnt int64) {
+		proxy := yuubari_go.NewYuubariGoProxyHandler(port, maxRetry, retryInterval, proxy, kcp, func(errCnt int64) {
 			systray.SetTitle(fmt.Sprintf("YuubariGo! (%d)", errCnt))
 			systray.SetTooltip(fmt.Sprintf("YuubariGo! (%d)", errCnt))
 		})
