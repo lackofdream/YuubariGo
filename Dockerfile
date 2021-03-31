@@ -16,4 +16,4 @@ COPY --from=builder /go/bin/yuubari_go /go/bin/yuubari_go
 
 ENTRYPOINT ["/go/bin/yuubari_go"]
 
-CMD ["-debug", "-interval", "2", "-retry", "10"]
+CMD ["-debug", "-interval", "2", "-retry", "10", "-kcp", "http://127.0.0.1:8081"]
