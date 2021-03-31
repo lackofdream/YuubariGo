@@ -1,3 +1,9 @@
+# github.com/allegro/bigcache/v2 v2.2.5
+## explicit
+# github.com/allegro/bigcache/v3 v3.0.0
+## explicit
+github.com/allegro/bigcache/v3
+github.com/allegro/bigcache/v3/queue
 # github.com/elazarl/goproxy v0.0.0-20180725130230-947c36da3153
 ## explicit
 # github.com/getlantern/context v0.0.0-20190109183933-c447772a6520
@@ -17,6 +23,9 @@ github.com/getlantern/ops
 github.com/getlantern/systray
 # github.com/go-stack/stack v1.8.0
 github.com/go-stack/stack
+# github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible
+## explicit
+github.com/go-telegram-bot-api/telegram-bot-api
 # github.com/konsorten/go-windows-terminal-sequences v1.0.3
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c
@@ -24,6 +33,9 @@ github.com/oxtoacart/bpool
 # github.com/sirupsen/logrus v1.6.0
 ## explicit
 github.com/sirupsen/logrus
+# github.com/technoweenie/multipartstreamer v1.0.1
+## explicit
+github.com/technoweenie/multipartstreamer
 # golang.org/x/sys v0.0.0-20200515095857-1151b9dac4a9
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix

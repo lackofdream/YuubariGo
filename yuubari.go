@@ -47,6 +47,8 @@ func craftClientRequest(req *http.Request) *http.Request {
 	return ret
 }
 
+// ProxyHandler handles requests to KanColle server
+// note: plugins MUST NOT modify any fields of requests and responses (read only)
 type ProxyHandler struct {
 	*goproxy.ProxyHttpServer
 	port             int
@@ -57,6 +59,7 @@ type ProxyHandler struct {
 	errCountNotifyCh chan struct{}
 	maxRetry         int
 	retryInterval    int
+	plugins          []func(*http.Request, *http.Response)
 }
 
 // readResp get response body data while keeping response body readable
@@ -65,6 +68,10 @@ func readResp(response *http.Response) []byte {
 	response.Body.Close()
 	response.Body = io.NopCloser(bytes.NewBuffer(data))
 	return data
+}
+
+func (p *ProxyHandler) RegisterPlugin(plugin func(*http.Request, *http.Response)) {
+	p.plugins = append(p.plugins, plugin)
 }
 
 func (p *ProxyHandler) ProxyWithRetry(req *http.Request, _ *goproxy.ProxyCtx) (*http.Request, *http.Response) {
@@ -88,6 +95,9 @@ func (p *ProxyHandler) ProxyWithRetry(req *http.Request, _ *goproxy.ProxyCtx) (*
 		log.Debugf("proxy request to %s", req.URL)
 		resp, err := httpClient.Do(craftClientRequest(req))
 		if err == nil {
+			for _, plugin := range p.plugins {
+				plugin(req, resp)
+			}
 			return req, resp
 		}
 		atomic.AddInt64(&p.errCount, 1)
@@ -97,7 +107,9 @@ func (p *ProxyHandler) ProxyWithRetry(req *http.Request, _ *goproxy.ProxyCtx) (*
 			log.Errorf("unrecoverable error: %s", err)
 			return req, goproxy.NewResponse(req, "application/json", 500, "")
 		}
-		time.Sleep(time.Duration(p.retryInterval) * time.Second)
+		if retryCount != p.maxRetry {
+			time.Sleep(time.Duration(p.retryInterval) * time.Second)
+		}
 		retryCount++
 	}
 
@@ -122,6 +134,7 @@ func NewYuubariGoProxyHandler(port int, maxRetry int, retryInterval int, proxy s
 		errCountNotifyCh: make(chan struct{}, 1024),
 		maxRetry:         maxRetry,
 		retryInterval:    retryInterval,
+		plugins:          make([]func(*http.Request, *http.Response), 0),
 	}
 	ret.OnRequest().DoFunc(ret.ProxyWithRetry)
 	ret.OnRequest().HandleConnectFunc(func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
