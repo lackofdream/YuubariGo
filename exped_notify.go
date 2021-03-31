@@ -37,6 +37,9 @@ func (n *Notifiable) notify(deckIdx int, deckName string, expedNo int, endTime i
 
 func (n *Notifiable) notifyDaemon() {
 	var state PortAPI
+	tgUpdateConfig := tgbotapi.NewUpdate(0)
+	tgUpdateConfig.Timeout = 60
+	tgUpdatesCh, _ := n.tgBot.GetUpdatesChan(tgUpdateConfig)
 	for {
 		select {
 		case <-time.After(time.Second):
@@ -50,7 +53,26 @@ func (n *Notifiable) notifyDaemon() {
 			}
 		case data := <-n.portDataCh:
 			state = data
+		case tgUpdate := <-tgUpdatesCh:
+			log.Infof("[%s] %s", tgUpdate.Message.From.UserName, tgUpdate.Message.Text)
+			switch tgUpdate.Message.Command() {
+			case "list":
+				sb := strings.Builder{}
+				now := time.Now()
+				for idx, deck := range state.APIData.APIDeckPort {
+					if idx == 0 || deck.APIMission[0] == 0 {
+						continue
+					}
+					sb.WriteString(fmt.Sprintf(
+						"Fleet %s(#%d) is doing expedition #%d (%s left)\n",
+						deck.APIName, idx+1, deck.APIMission[1],
+						time.Unix(int64(deck.APIMission[2])/1000, 0).Sub(now)))
+				}
+				msg := tgbotapi.NewMessage(tgUpdate.Message.Chat.ID, sb.String())
+				n.tgBot.Send(msg)
+			}
 		}
+
 	}
 }
 
