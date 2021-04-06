@@ -103,7 +103,8 @@ func (p *ProxyHandler) ProxyWithRetry(req *http.Request, _ *goproxy.ProxyCtx) (*
 		atomic.AddInt64(&p.errCount, 1)
 		p.errCountNotifyCh <- struct{}{}
 		if !strings.Contains(err.Error(), "EOF") &&
-			!strings.Contains(err.Error(), "An existing connection was forcibly closed by the remote host") {
+			!strings.Contains(err.Error(), "An existing connection was forcibly closed by the remote host") &&
+			!strings.Contains(err.Error(), "connection reset by peer") {
 			log.Errorf("unrecoverable error: %s", err)
 			return req, goproxy.NewResponse(req, "application/json", 500, "")
 		}
