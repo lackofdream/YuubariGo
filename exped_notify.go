@@ -80,8 +80,12 @@ func (n *Notifiable) updateTimers(req *http.Request, resp *http.Response) {
 	if !strings.Contains(req.URL.Path, "/kcsapi/api_port/port") {
 		return
 	}
+	respData := readResp(resp)
+	if len(respData) < 7 {
+		return
+	}
 	var data PortAPI
-	json.NewDecoder(bytes.NewBuffer(readResp(resp)[7:])).Decode(&data)
+	json.NewDecoder(bytes.NewBuffer(respData[7:])).Decode(&data)
 	n.portDataCh <- data
 }
 
