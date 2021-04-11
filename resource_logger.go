@@ -18,6 +18,9 @@ func logResources(req *http.Request, resp *http.Response) {
 	}
 	var data PortAPI
 	json.NewDecoder(bytes.NewBuffer(respData[7:])).Decode(&data)
+	if len(data.APIData.APIMaterial) < 8 {
+		return
+	}
 	log.WithFields(log.Fields{
 		"nickname": data.APIData.APIBasic.APINickname,
 		"fuel": data.APIData.APIMaterial[0].APIValue,
