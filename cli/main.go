@@ -37,7 +37,7 @@ func main() {
 		log.Warnf("error count: %d", errCnt)
 	})
 	if expedNotify {
-		proxy = yuubari_go.MakeNotifiable(proxy, tgToken, tgUser)
+		proxy = yuubari_go.MakeResourceLogged(yuubari_go.MakeNotifiable(proxy, tgToken, tgUser))
 	}
 	log.Fatal(proxy.Serve())
 }
