@@ -7,7 +7,7 @@ metadata:
   name: yahagi-go
 spec:
   containers:
-  - image: ${YUUBARIGO_IMAGE:-yuubarigo}:$(git rev-parse HEAD)
+  - image: ${YUUBARIGO_IMAGE:-yuubarigo}:$(git rev-parse --short HEAD)
     args:
     - -debug
     - -interval
