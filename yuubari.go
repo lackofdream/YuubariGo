@@ -140,6 +140,10 @@ func NewYuubariGoProxyHandler(port int, maxRetry int, retryInterval int, proxy s
 	ret.OnRequest().DoFunc(ret.ProxyWithRetry)
 	ret.OnRequest().HandleConnectFunc(func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
 		log.Debugf("connect received, host: %s", host)
+		hostAndPort := strings.Split(host, ":")
+		if len(hostAndPort) != 2 || hostAndPort[1] != "80" {
+			return goproxy.OkConnect, host
+		}
 		return goproxy.HTTPMitmConnect, host
 	})
 	go func() {
