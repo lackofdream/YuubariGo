@@ -17,9 +17,10 @@ type Notifiable struct {
 	//portDataCh to update port api data
 	portDataCh chan PortAPI
 	//cache to prevent duplicated notifications
-	cache    *bigcache.BigCache
-	tgBot    *tgbotapi.BotAPI
-	tgUserId int64
+	cache       *bigcache.BigCache
+	tgBot       *tgbotapi.BotAPI
+	tgUserId    int64
+	teitokuName string
 }
 
 func (n *Notifiable) notify(deckIdx int, deckName string, expedNo int, endTime int) {
@@ -86,10 +87,12 @@ func (n *Notifiable) updateTimers(req *http.Request, resp *http.Response) {
 	}
 	var data PortAPI
 	json.NewDecoder(bytes.NewBuffer(respData[7:])).Decode(&data)
-	n.portDataCh <- data
+	if data.APIData.APIBasic.APINickname == n.teitokuName {
+		n.portDataCh <- data
+	}
 }
 
-func MakeNotifiable(ph *ProxyHandler, tgBotToken string, tgUserID int64) *ProxyHandler {
+func MakeNotifiable(ph *ProxyHandler, tgBotToken string, tgUserID int64, teitokuName string) *ProxyHandler {
 	ret := Notifiable{
 		ProxyHandler: ph,
 		portDataCh:   make(chan PortAPI, 0),
@@ -104,7 +107,8 @@ func MakeNotifiable(ph *ProxyHandler, tgBotToken string, tgUserID int64) *ProxyH
 			}
 			return r
 		}(),
-		tgUserId: tgUserID,
+		tgUserId:    tgUserID,
+		teitokuName: teitokuName,
 	}
 	go ret.notifyDaemon()
 	ret.RegisterPlugin(ret.updateTimers)

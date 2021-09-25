@@ -15,6 +15,7 @@ var kcp string
 var expedNotify bool
 var tgToken string
 var tgUser int64
+var teitokuName string
 
 func init() {
 	flag.IntVar(&port, "port", 8099, "listen port")
@@ -25,6 +26,7 @@ func init() {
 	flag.StringVar(&kcp, "kcp", "", "KCCacheProxy url")
 	flag.BoolVar(&expedNotify, "expedNotify", false, "enable exped_notify plugin")
 	flag.StringVar(&tgToken, "tgToken", "", "telegram bot token")
+	flag.StringVar(&teitokuName, "teitokuName", "", "teitoku nickname for exped_notify")
 	flag.Int64Var(&tgUser, "tgUser", 0, "telegram user id to be notified")
 	flag.Parse()
 }
@@ -37,7 +39,7 @@ func main() {
 		log.Warnf("error count: %d", errCnt)
 	})
 	if expedNotify {
-		proxy = yuubari_go.MakeResourceLogged(yuubari_go.MakeNotifiable(proxy, tgToken, tgUser))
+		proxy = yuubari_go.MakeResourceLogged(yuubari_go.MakeNotifiable(proxy, tgToken, tgUser, teitokuName))
 	}
 	log.Fatal(proxy.Serve())
 }
