@@ -8,6 +8,7 @@ import (
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	log "github.com/sirupsen/logrus"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -92,7 +93,18 @@ func (n *Notifiable) updateTimers(req *http.Request, resp *http.Response) {
 	}
 }
 
-func MakeNotifiable(ph *ProxyHandler, tgBotToken string, tgUserID int64, teitokuName string) *ProxyHandler {
+func MakeNotifiable(ph *ProxyHandler, proxy string, tgBotToken string, tgUserID int64, teitokuName string) *ProxyHandler {
+	httpClient := http.Client{}
+	if len(proxy) != 0 {
+		proxyURL, err := url.Parse(proxy)
+		if err != nil {
+			log.Fatal(err)
+		}
+		transCfg := &http.Transport{
+			Proxy: http.ProxyURL(proxyURL),
+		}
+		httpClient.Transport = transCfg
+	}
 	ret := Notifiable{
 		ProxyHandler: ph,
 		portDataCh:   make(chan PortAPI, 0),
@@ -101,7 +113,7 @@ func MakeNotifiable(ph *ProxyHandler, tgBotToken string, tgUserID int64, teitoku
 			return r
 		}(),
 		tgBot: func() *tgbotapi.BotAPI {
-			r, err := tgbotapi.NewBotAPI(tgBotToken)
+			r, err := tgbotapi.NewBotAPIWithClient(tgBotToken, &httpClient)
 			if err != nil {
 				log.Panic(err)
 			}
