@@ -94,17 +94,18 @@ func (p *ProxyHandler) ProxyWithRetry(req *http.Request, _ *goproxy.ProxyCtx) (*
 	for retryCount <= p.maxRetry {
 		log.Debugf("proxy request to %s", req.URL)
 		resp, err := httpClient.Do(craftClientRequest(req))
-		if err == nil {
+		if err == nil && resp.StatusCode != 502 {
 			for _, plugin := range p.plugins {
 				plugin(req, resp)
 			}
 			log.Infof("%d %s", resp.StatusCode, req.URL)
 			return req, resp
 		}
-		log.Warnf("error on proxy request to %s: %s", req.URL, err)
+		log.Warnf("error on proxy request to %s: status code: %d, error: %s", req.URL, resp.StatusCode, err)
 		atomic.AddInt32(&p.errCount, 1)
 		p.errCountNotifyCh <- struct{}{}
-		if !strings.Contains(err.Error(), "EOF") &&
+		if err != nil && // if error is nil(502), retry
+			!strings.Contains(err.Error(), "EOF") &&
 			!strings.Contains(err.Error(), "An existing connection was forcibly closed by the remote host") &&
 			!strings.Contains(err.Error(), "connection reset by peer") {
 			log.Errorf("unrecoverable error: %s", err)
