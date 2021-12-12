@@ -35,7 +35,7 @@ func main() {
 	if debug {
 		log.SetLevel(log.DebugLevel)
 	}
-	instance := yuubari_go.NewYuubariGoProxyHandler(port, maxRetry, retryInterval, proxy, kcp, func(errCnt int64) {
+	instance := yuubari_go.NewYuubariGoProxyHandler(port, maxRetry, retryInterval, proxy, kcp, func(errCnt int32) {
 		log.Warnf("error count: %d", errCnt)
 	})
 	if expedNotify {

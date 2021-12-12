@@ -55,7 +55,7 @@ type ProxyHandler struct {
 	client           http.Client
 	kcpEnabled       bool
 	kcsClient        http.Client
-	errCount         int64
+	errCount         int32
 	errCountNotifyCh chan struct{}
 	maxRetry         int
 	retryInterval    int
@@ -98,9 +98,11 @@ func (p *ProxyHandler) ProxyWithRetry(req *http.Request, _ *goproxy.ProxyCtx) (*
 			for _, plugin := range p.plugins {
 				plugin(req, resp)
 			}
+			log.Infof("%d %s", resp.StatusCode, req.URL)
 			return req, resp
 		}
-		atomic.AddInt64(&p.errCount, 1)
+		log.Warnf("error on proxy request to %s: %s", req.URL, err)
+		atomic.AddInt32(&p.errCount, 1)
 		p.errCountNotifyCh <- struct{}{}
 		if !strings.Contains(err.Error(), "EOF") &&
 			!strings.Contains(err.Error(), "An existing connection was forcibly closed by the remote host") &&
@@ -118,7 +120,7 @@ func (p *ProxyHandler) ProxyWithRetry(req *http.Request, _ *goproxy.ProxyCtx) (*
 	return req, goproxy.NewResponse(req, "application/json", 500, "")
 }
 
-func NewYuubariGoProxyHandler(port int, maxRetry int, retryInterval int, proxy string, kcp string, onErrorCntIncr func(int64)) *ProxyHandler {
+func NewYuubariGoProxyHandler(port int, maxRetry int, retryInterval int, proxy string, kcp string, onErrorCntIncr func(int32)) *ProxyHandler {
 	ret := ProxyHandler{
 		ProxyHttpServer: goproxy.NewProxyHttpServer(),
 		port:            port,

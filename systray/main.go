@@ -38,7 +38,7 @@ func main() {
 			<-mQuit.ClickedCh
 			systray.Quit()
 		}()
-		proxy := yuubari_go.NewYuubariGoProxyHandler(port, maxRetry, retryInterval, proxy, kcp, func(errCnt int64) {
+		proxy := yuubari_go.NewYuubariGoProxyHandler(port, maxRetry, retryInterval, proxy, kcp, func(errCnt int32) {
 			systray.SetTitle(fmt.Sprintf("YuubariGo! (%d)", errCnt))
 			systray.SetTooltip(fmt.Sprintf("YuubariGo! (%d)", errCnt))
 		})
