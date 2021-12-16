@@ -177,7 +177,7 @@ func (p *ProxyHandler) SetProxy(proxy string) {
 		log.Fatal(err)
 	}
 	p.client.Transport = &http.Transport{Proxy: http.ProxyURL(proxyUrl)}
-	p.Tr.Proxy = http.ProxyURL(proxyUrl)
+	p.ConnectDial = p.NewConnectDialToProxy(proxy)
 }
 
 func (p *ProxyHandler) SetKCP(kcp string) {
