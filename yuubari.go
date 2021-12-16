@@ -162,6 +162,9 @@ func NewYuubariGoProxyHandler(port int, maxRetry int, retryInterval int, proxy s
 	if len(kcp) != 0 {
 		ret.SetKCP(kcp)
 	}
+	if log.GetLevel() == log.DebugLevel {
+		ret.Verbose = true
+	}
 	return &ret
 }
 
