@@ -145,6 +145,7 @@ func NewYuubariGoProxyHandler(port int, maxRetry int, retryInterval int, proxy s
 		log.Debugf("connect received, host: %s", host)
 		hostAndPort := strings.Split(host, ":")
 		if len(hostAndPort) != 2 || hostAndPort[1] != "80" {
+			log.Infof("connect to %s, but not supported", host)
 			return goproxy.OkConnect, host
 		}
 		return goproxy.HTTPMitmConnect, host
