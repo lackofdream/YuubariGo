@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/allegro/bigcache/v3"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/allegro/bigcache/v3"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	log "github.com/sirupsen/logrus"
 )
 
 type Notifiable struct {
@@ -107,9 +108,9 @@ func MakeNotifiable(ph *ProxyHandler, proxy string, tgBotToken string, tgUserID 
 	}
 	ret := Notifiable{
 		ProxyHandler: ph,
-		portDataCh:   make(chan PortAPI, 0),
+		portDataCh:   make(chan PortAPI),
 		cache: func() *bigcache.BigCache {
-			r, _ := bigcache.NewBigCache(bigcache.DefaultConfig(8 * time.Hour))
+			r, _ := bigcache.NewBigCache(bigcache.DefaultConfig(30 * 24 * time.Hour))
 			return r
 		}(),
 		tgBot: func() *tgbotapi.BotAPI {
