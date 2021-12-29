@@ -38,8 +38,9 @@ func main() {
 	instance := yuubari_go.NewYuubariGoProxyHandler(port, maxRetry, retryInterval, proxy, kcp, func(errCnt int32) {
 		log.Warnf("error count: %d", errCnt)
 	})
+	instance = yuubari_go.MakeResourceLogged(instance)
 	if expedNotify {
-		instance = yuubari_go.MakeResourceLogged(yuubari_go.MakeNotifiable(instance, proxy, tgToken, tgUser, teitokuName))
+		instance = yuubari_go.MakeNotifiable(instance, proxy, tgToken, tgUser, teitokuName)
 	}
 	log.Fatal(instance.Serve())
 }
